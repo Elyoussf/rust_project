@@ -17,7 +17,7 @@ name = "sha1"
 path = "sha-1/main.rs"
 [[bin]]
 name = "init"
-path = "rgit_init/rgit_contents_initializer.rs"
+path = "init/rgit_contents_initializer.rs"
 
 
 

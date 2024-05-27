@@ -1,23 +1,32 @@
 [package]
-name = "git"
-version = "0.1.0"
-edition = "2021"
-crossterm = "0.20.0"
 
+
+name = "Mysha1"
+version = "0.1.0"
+edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 
 
 [dependencies]
+clap = "4.5.4"
+sha1 = "0.10"  # Ensure you have the sha1 crate
 winapi = { version = "0.3", features = ["winbase"] }
-sha-1 = "0.10"
-[[bin]]
-name = "sha1"
-path = "sha-1/main.rs"
+
+
+
+
+
 [[bin]]
 name = "init"
 path = "init/rgit_contents_initializer.rs"
+[[bin]]
+name = "test"
+path = "test/tst.rs"
 
+
+                  
+  
 
 

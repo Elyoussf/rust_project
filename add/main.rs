@@ -13,7 +13,6 @@ fn calculate_sha1(content: &[u8]) -> String {
 }
 
 fn write_object(content: &[u8], sha1: &str) -> io::Result<()> {
-    // Split SHA-1 into directory and file name
     let (dir_name, file_name) = sha1.split_at(2);
     let object_dir = format!(".rgit/objects/{}", dir_name);
     let object_path = format!("{}/{}", object_dir, file_name);
@@ -47,6 +46,12 @@ fn process_directory(dir_path: &Path) -> io::Result<()> {
     for entry in fs::read_dir(dir_path)? {
         let entry = entry?;
         let path = entry.path();
+
+        // Skip the .rgit directory
+        if path.is_dir() && path.file_name().map_or(false, |name| name == ".rgit") {
+            continue;
+        }
+
         if path.is_file() {
             is_empty = false;
             process_file(&path)?;
@@ -68,7 +73,9 @@ fn process_directory(dir_path: &Path) -> io::Result<()> {
 
 fn add(path: &Path) -> io::Result<()> {
     if !path.exists() {
-        eprintln!("Path '{}' does not exist", path.display());
+        if path.to_string_lossy() != "add" {
+            println!("Path '{}' does not exist", path.display());
+        }
         return Ok(());
     }
 
@@ -77,7 +84,7 @@ fn add(path: &Path) -> io::Result<()> {
     } else if path.is_dir() {
         process_directory(path)?;
     } else {
-        eprintln!("Path '{}' is neither a file nor a directory", path.display());
+        println!("Path '{}' is neither a file nor a directory", path.display());
     }
 
     Ok(())
@@ -90,13 +97,19 @@ fn main() -> io::Result<()> {
         return Ok(());
     }
 
+    // Check if the repository has been initialized
+    if !Path::new(".rgit").exists() {
+        println!("Error: Repository not initialized. Please run 'rgit init' first.");
+        return Ok(());
+    }
+
     // Handle the case where the argument is "."
-    if args.len() == 2 && args[1] == "." {
+    if args.len() == 3 && args[2] == "." {
         let current_dir = env::current_dir()?;
         if let Err(e) = add(&current_dir) {
             eprintln!("Failed to add '{}': {}", current_dir.display(), e);
         } else {
-            println!("Added the whole directory to the repository booyah");
+            println!("Added the whole directory to the repository.");
         }
     } else {
         for arg in &args[1..] {

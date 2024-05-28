@@ -7,33 +7,21 @@ use std::io::Write;
 
 fn main() -> io::Result<()> {
     let current_dir = env::current_dir()?;
-  
-
-
     let mut rgit_dir = PathBuf::from(&current_dir);
-
     rgit_dir.push(".rgit");
-
     if rgit_dir.exists() {
         println!("git already initialized  ");
     } else {
-
         fs::create_dir(&rgit_dir)?;
         println!("git initialized succefully!!");
-        
     }
 
-    
     let current_dir = env::current_dir()?;
 
-  
     let rgit_dir = current_dir.join(".rgit");
 
-    if !rgit_dir.exists() {
-        fs::create_dir(&rgit_dir)?;
-    }
 
-
+  
     let dirs_to_create = vec![
         "hooks", 
         "info", 
@@ -42,9 +30,7 @@ fn main() -> io::Result<()> {
         "objects/pack", 
         "refs/heads", 
         "refs/tags"
-    ];
-
-   
+    ]; 
     for dir_name in dirs_to_create {
         let dir_path = rgit_dir.join(dir_name);
         create_directory(&dir_path)?;

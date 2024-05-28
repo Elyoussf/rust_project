@@ -1,7 +1,7 @@
 use std::env;
 use std::fs::{self, File};
-use std::io::{self, Read, Write, BufWriter};
-use std::path::{Path, PathBuf};
+use std::io::{self, Write, BufWriter};
+use std::path::Path;
 use sha1::{Sha1, Digest};
 use flate2::{Compression, write::ZlibEncoder};
 

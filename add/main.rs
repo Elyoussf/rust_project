@@ -179,7 +179,7 @@ fn sha1_to_bytes(sha1: &str) -> [u8; 20] {
     }
     bytes
 }
-
+ 
 fn add(path: &Path, indexed_paths: &mut HashSet<PathBuf>) -> io::Result<()> {
     if !path.exists() {
         eprintln!("Path '{}' does not exist", path.display());

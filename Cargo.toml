@@ -14,7 +14,6 @@ clap = "4.5.4"
 sha1 = "0.10"  # Ensure you have the sha1 crate
 winapi = { version = "0.3", features = ["winbase"] }
 flate2 = "1.0.25"
-
 hex = "0.4.3"
 
 

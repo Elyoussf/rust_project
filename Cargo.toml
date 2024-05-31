@@ -25,7 +25,7 @@ name = "add"
 path = "add/main.rs"
 [[bin]]
 name = "commit"
-path = "commit/main.rs"
+path = "Commit/main.rs"
 
 
                   

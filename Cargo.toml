@@ -10,6 +10,7 @@ edition = "2018"
 
 
 [dependencies]
+chrono = "0.4"
 clap = "4.5.4"
 sha1 = "0.10"  # Ensure you have the sha1 crate
 winapi = { version = "0.3", features = ["winbase"] }

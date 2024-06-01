@@ -7,13 +7,13 @@ use std::collections::HashSet;
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
-        eprintln!("Usage: rgit add <file_or_directory> [...]");
+        println!("Usage: rgit add <file_or_directory> [...]");
         return Ok(());
     }
 
     // Check if the repository has been initialized
     if !Path::new(".rgit").exists() {
-        eprintln!("Error: Repository not initialized. Please run 'rgit init' first.");
+        println!("Error: Repository not initialized. Please run 'rgit init' first.");
         return Ok(());
     }
 
@@ -34,7 +34,7 @@ fn main() -> io::Result<()> {
     if args.len() == 3 && args[2] == "." {
         let current_dir = env::current_dir()?;
         if let Err(e) = add(&current_dir, &mut indexed_paths) {
-            eprintln!("Failed to add '{}': {}", current_dir.display(), e);
+            println!("Failed to add '{}': {}", current_dir.display(), e);
         } else {
             println!("Added the whole directory to the repository.");
         }
@@ -42,7 +42,7 @@ fn main() -> io::Result<()> {
         for arg in &args[1..] {
             let path = Path::new(arg);
             if let Err(e) = add(path, &mut indexed_paths) {
-                eprintln!("Failed to add '{}': {}", path.display(), e);
+                println!("Failed to add '{}': {}", path.display(), e);
             } else if path.exists() {
                 println!("Added '{}' to the repository.", path.display());
             }
@@ -84,7 +84,7 @@ fn update_index_binary(file_path: &Path, indexed_paths: &mut HashSet<PathBuf>) -
 
 fn add(path: &Path, indexed_paths: &mut HashSet<PathBuf>) -> io::Result<()> {
     if !path.exists() {
-        eprintln!("Path '{}' does not exist", path.display());
+        println!("Path '{}' does not exist", path.display());
         return Ok(());
     }
 
@@ -96,12 +96,16 @@ fn add(path: &Path, indexed_paths: &mut HashSet<PathBuf>) -> io::Result<()> {
     if path.is_file() {
         update_index_binary(path, indexed_paths)?;
     } else if path.is_dir() {
+        // Add directory itself
+        update_index_binary(path, indexed_paths)?;
+
+        // Add all files and subdirectories
         for entry in fs::read_dir(path)? {
             let entry = entry?;
             add(&entry.path(), indexed_paths)?;
         }
     } else {
-        eprintln!("Path '{}' is neither a file nor a directory", path.display());
+        println!("Path '{}' is neither a file nor a directory", path.display());
     }
 
     Ok(())

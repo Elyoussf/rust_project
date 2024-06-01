@@ -58,6 +58,10 @@ fn commit(message: &str) -> io::Result<()> {
     write_object(commit_content.as_bytes(), &commit_sha1)?;
 
     println!("Committed as {}", commit_sha1);
+
+    // Truncate the index file to empty it after committing
+    File::create(&index_path)?;
+
     Ok(())
 }
 

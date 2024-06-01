@@ -10,12 +10,12 @@ use std::io::Write;
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 || args[1] != "-m" {
-        println!("Usage: cargo run --bin commit -m <message>");
+        println!("Usage: rgit commit -m <message>");
         return Ok(());
     }
 
     if !Path::new(".rgit").exists() {
-        println!("Error: Repository not initialized. Please run 'cargo run --bin init' first.");
+        println!("Error: Repository not initialized. Please run 'rgit init' first.");
         return Ok(());
     }
 
@@ -33,7 +33,6 @@ fn create_file_with_content(dir_name: &Path, file_name: &str, content: &str) -> 
 fn commit(message: &str) -> io::Result<()> {
     let current_dir = env::current_dir()?;
     let rgit_dir = current_dir.join(".rgit");
-
     let index_path = rgit_dir.join("index");
 
     if !index_path.exists() || is_file_empty(index_path.to_str().unwrap())? {
@@ -41,9 +40,16 @@ fn commit(message: &str) -> io::Result<()> {
         return Ok(());
     }
 
-    create_file_with_content(&rgit_dir, "COMMIT_MSG", message)?;
+    let index_content = read_index_content()?;
+    let index_string = String::from_utf8(index_content).unwrap();
+    let indexed_paths: Vec<&str> = index_string.split_whitespace().collect();
 
-    let index_sha1 = hash_and_save_index()?;
+    if indexed_paths.is_empty() {
+        println!("Nothing to commit. Staging area is empty.");
+        return Ok(());
+    }
+
+    let tree_sha1 = create_tree_object(&indexed_paths)?;
 
     let author_name = "Hamoudi";
     let author_email = "hamoudi@sbitar.com";
@@ -51,7 +57,7 @@ fn commit(message: &str) -> io::Result<()> {
 
     let commit_content = format!(
         "tree {}\nauthor {} <{}>\ndate {}\n\n{}\n",
-        index_sha1, author_name, author_email, timestamp, message
+        tree_sha1, author_name, author_email, timestamp, message
     );
 
     let commit_sha1 = calculate_sha1(commit_content.as_bytes());
@@ -98,9 +104,25 @@ fn read_index_content() -> io::Result<Vec<u8>> {
     fs::read(index_path)
 }
 
-fn hash_and_save_index() -> io::Result<String> {
-    let index_content = read_index_content()?;
-    let sha1 = calculate_sha1(&index_content);
-    write_object(&index_content, &sha1)?;
+fn create_tree_object(paths: &[&str]) -> io::Result<String> {
+    let mut tree_content = Vec::new();
+
+    for path_str in paths {
+        let path = Path::new(path_str);
+        if path.is_file() {
+            let content = fs::read(path)?;
+            let sha1 = calculate_sha1(&content);
+            write_object(&content, &sha1)?;
+
+            let file_name = path.file_name().unwrap().to_str().unwrap();
+            let entry = format!("100644 blob {}\t{}\n", sha1, file_name);
+            tree_content.push(entry);
+        }
+    }
+
+    let tree_content = tree_content.concat();
+    let sha1 = calculate_sha1(tree_content.as_bytes());
+    write_object(tree_content.as_bytes(), &sha1)?;
+
     Ok(sha1)
 }

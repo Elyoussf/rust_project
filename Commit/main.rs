@@ -40,16 +40,13 @@ fn commit(message: &str) -> io::Result<()> {
         return Ok(());
     }
 
-    let index_content = read_index_content()?;
-    let index_string = String::from_utf8(index_content).unwrap();
-    let indexed_paths: Vec<&str> = index_string.split_whitespace().collect();
-
-    if indexed_paths.is_empty() {
-        println!("Nothing to commit. Staging area is empty.");
-        return Ok(());
-    }
-
-    let tree_sha1 = create_tree_object(&indexed_paths)?;
+    let tree_sha1 = match create_tree_object() {
+        Ok(tree_sha1) => tree_sha1,
+        Err(err) => {
+            println!("Error creating tree object: {}", err);
+            return Err(err);
+        }
+    };
 
     let author_name = "Hamoudi";
     let author_email = "hamoudi@sbitar.com";
@@ -104,13 +101,26 @@ fn read_index_content() -> io::Result<Vec<u8>> {
     fs::read(index_path)
 }
 
-fn create_tree_object(paths: &[&str]) -> io::Result<String> {
+fn create_tree_object() -> io::Result<String> {
+    let index_content = match read_index_content() {
+        Ok(content) => content,
+        Err(err) => return Err(err),
+    };
+    let index_string = match String::from_utf8(index_content) {
+        Ok(string) => string,
+        Err(err) => return Err(io::Error::new(io::ErrorKind::InvalidData, err)),
+    };
+    let indexed_paths: Vec<&str> = index_string.split_whitespace().collect();
+
     let mut tree_content = Vec::new();
 
-    for path_str in paths {
+    for path_str in indexed_paths {
         let path = Path::new(path_str);
         if path.is_file() {
-            let content = fs::read(path)?;
+            let content = match fs::read(path) {
+                Ok(content) => content,
+                Err(err) => return Err(err),
+            };
             let sha1 = calculate_sha1(&content);
             write_object(&content, &sha1)?;
 

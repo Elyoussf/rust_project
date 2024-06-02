@@ -1,8 +1,9 @@
 use std::env;
 use std::fs::{self, File};
-use std::io::{self, BufRead, BufReader, BufWriter, Write};
+use std::io::{self, BufRead, BufReader, BufWriter, Write, Read};
 use std::path::{Path, PathBuf};
 use std::collections::HashSet;
+use sha1::{Sha1, Digest};
 
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -11,26 +12,24 @@ fn main() -> io::Result<()> {
         return Ok(());
     }
 
-    // Check if the repository has been initialized
     if !Path::new(".rgit").exists() {
         println!("Error: Repository not initialized. Please run 'rgit init' first.");
         return Ok(());
     }
 
-    // Load the existing index file into a HashSet for quick lookup
     let mut indexed_paths: HashSet<PathBuf> = HashSet::new();
     if let Ok(file) = File::open(".rgit/index") {
         let reader = BufReader::new(file);
         for line in reader.lines() {
             if let Ok(line) = line {
-                for path in line.split_whitespace() {
+                let mut parts = line.split_whitespace();
+                if let Some(path) = parts.next() {
                     indexed_paths.insert(PathBuf::from(path));
                 }
             }
         }
     }
 
-    // Handle the case where the argument is "."
     if args.len() == 3 && args[2] == "." {
         let current_dir = env::current_dir()?;
         if let Err(e) = add(&current_dir, &mut indexed_paths) {
@@ -49,36 +48,58 @@ fn main() -> io::Result<()> {
         }
     }
 
-    // Write the updated paths back to the index file
     let mut index_file = BufWriter::new(File::create(".rgit/index")?);
-    for path in indexed_paths {
+    for path in &indexed_paths {
+        let hash = if path.is_file() {
+            calculate_sha1(&path)?
+        } else {
+            // Use a fixed hash for directories
+            calculate_directory_sha1(&path)?
+        };
         index_file.write_all(path.to_str().unwrap().as_bytes())?;
         index_file.write_all(b" ")?;
+        index_file.write_all(hash.as_bytes())?;
+        index_file.write_all(b"\n")?;
     }
+
+    println!("Index file updated successfully.");
 
     Ok(())
 }
 
+fn calculate_sha1(file_path: &Path) -> io::Result<String> {
+    let mut file = File::open(file_path)?;
+    let mut hasher = Sha1::new();
+    let mut buffer = [0; 1024];
+
+    loop {
+        let n = file.read(&mut buffer)?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buffer[..n]);
+    }
+
+    let result = hasher.finalize();
+    Ok(format!("{:x}", result))
+}
+
+fn calculate_directory_sha1(dir_path: &Path) -> io::Result<String> {
+    // Use a hash of the directory path as a placeholder
+    let mut hasher = Sha1::new();
+    hasher.update(dir_path.to_str().unwrap().as_bytes());
+    let result = hasher.finalize();
+    Ok(format!("{:x}", result))
+}
+
 fn update_index_binary(file_path: &Path, indexed_paths: &mut HashSet<PathBuf>) -> io::Result<()> {
-    // Check if the path is already indexed
     if indexed_paths.contains(file_path) {
         return Ok(());
     }
 
-    // Insert the new file path into the indexed_paths set
+    println!("Adding '{}' to index.", file_path.display()); // Debugging statement
+
     indexed_paths.insert(file_path.to_path_buf());
-
-    // Open the index file in append mode, creating it if it doesn't exist
-    let mut index_file = BufWriter::new(File::options().append(true).create(true).open(".rgit/index")?);
-
-    // Get the absolute path of the file
-    let binding = file_path.canonicalize()?;
-    let path_str = binding.to_str().unwrap();
-
-    // Write the absolute path to the index file
-    index_file.write_all(path_str.as_bytes())?;
-    index_file.write_all(b" ")?;  // Space to separate entries
-
     Ok(())
 }
 
@@ -88,7 +109,6 @@ fn add(path: &Path, indexed_paths: &mut HashSet<PathBuf>) -> io::Result<()> {
         return Ok(());
     }
 
-    // Skip processing if the path contains ".rgit" in its components
     if path.components().any(|comp| comp.as_os_str() == ".rgit") {
         return Ok(());
     }
@@ -96,10 +116,9 @@ fn add(path: &Path, indexed_paths: &mut HashSet<PathBuf>) -> io::Result<()> {
     if path.is_file() {
         update_index_binary(path, indexed_paths)?;
     } else if path.is_dir() {
-        // Add directory itself
+        // Add the directory itself
         update_index_binary(path, indexed_paths)?;
 
-        // Add all files and subdirectories
         for entry in fs::read_dir(path)? {
             let entry = entry?;
             add(&entry.path(), indexed_paths)?;

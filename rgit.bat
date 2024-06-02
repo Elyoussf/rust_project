@@ -55,7 +55,10 @@ if "%~1"=="init" (
     attrib +h ".rgit" 1>nul 2>nul
     popd
     exit /b
-) else (
+)else if "%~1"=="status" (
+start /b cargo run --bin status
+exit /b
+)else (
     echo Error: Unknown command "%~1"
     popd
     exit /b 1
